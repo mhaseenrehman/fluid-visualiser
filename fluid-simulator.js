@@ -15,6 +15,10 @@ Which is where you call gl.drawElements or gl.drawArrays. These execute your sha
 We will be using Textures for these programs to access data
 */
 
+//---------------------------------------------- WEBGL GLOBALS ---------------------------------------------
+/** @type {WebGL2RenderingContext} gl */
+let gl;
+
 //----------------------------------------------- WEBGL CODE ----------------------------------------------
 
 function createTexture() {
@@ -39,21 +43,37 @@ function createTexture() {
 
     return velocity_texture;
 }
-
 function createFrameBuffer() {
 
 }
 
-// Create shader, upload the GLSL source and compile it
-/** @param {WebGL2RenderingContext} gl */
-function createShader(gl, type, source) {
+// Create shader - Upload the GLSL source and compile it
+function createShader(type, source) {
     var shader = gl.createShader(type);
     gl.shaderSource(shader, source);
-    
+    gl.compileShader(shader);
+
+    var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+    if (success) {
+        return shader;
+    }
+
+    console.log(gl.getShaderInfoLog(shader));
+    gl.deleteShader(shader);
 }
 
-function createProgram() {
+// Create program - Link shaders to program
+function createProgram(vertexShader, fragmentShader) {
+    var program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    var success = gl.getProgramParameter(program, gl.LINK_STATUS);
+    if (success) {
+        return program;
+    }
 
+    console.log(gl.getProgramInfoLog(program));
+    gl.deleteProgram(program);
 }
 
 // Main Entry Setup
@@ -68,7 +88,7 @@ function glSetup() {
     }
 
     // Obtain WebGL Context
-    const gl = canvas.getContext("webgl2");
+    gl = canvas.getContext("webgl2");
     if (!gl) {
         const gl1 = !!canvas.getContext("webgl");
         if (gl1) {
@@ -80,37 +100,31 @@ function glSetup() {
     }
 
     // Set up fluid simulation program
-    fluidSimulatorSetup(gl);
+    fs_setup(gl);
 }
+
+//----------------------------------------- FLUID SIMULATION GLOBALS --------------------------------------
+
+let lastUpdateTime = Date.now();
+
+let advectionProgram;
+let advectionUniforms = {};
+
+let dyeProgram;
+let dyeUniforms = {};
 
 //------------------------------------------ FLUID SIMULATION SETUP ---------------------------------------
 
-/** @param {WebGL2RenderingContext} gl */
-function setupVelocityTexture(gl, height, width) {
-}
+function fs_setup(gl) {
+    // Setup Textures, framebuffers, shaders, programs etc.
 
-/** @param {WebGL2RenderingContext} gl */
-function setupPressureTexture(gl) {
+    // Advection program setup
+    advectionProgram = createProgram();
+    
+    // Diffusion program setup
 
-}
+    // Projection program setup
 
-/** @param {WebGL2RenderingContext} gl */
-function setupVorticityTexture(gl) {
-
-}
-
-/** @param {WebGL2RenderingContext} gl */
-function setupVisualTexture(gl) {
-
-}
-
-function createTexture() {
-
-}
-
-/** @param {WebGL2RenderingContext} gl */
-function fluidSimulatorSetup(gl) {
-    // Setup textures for properties of fluid
 }
 
 //------------------------------------------ FLUID SIMULATION CODE ----------------------------------------
@@ -120,15 +134,51 @@ function fluidSimulatorSetup(gl) {
 // Represent Grid as Texture in GPU - 4 textures: 1 for visualising, velocity, pressure and vorticity
 // GPU does SIMD, therefore use fragment programs for each pixel
 
-function fluidSimulate_update() {
-
+function fs_update() {
+    const delta = calculateDeltaTime();
+    // if (resized) {
+    //  initFrameBuffers();
+    // }
+    obtainInputs();
+    fs_step(delta);
+    fs_render(null);
+    requestAnimationFrame(fluidSimulate_update);
 }
 
-function fluidSimulate_step() {
+
+function fs_step(delta) {
     // First three steps obtain a divergent field (i.e. matter is either created or destroyed)
-    
     // Obtain zero divergence field by subtracting pressure from gradient
+    // Bind one program after another
+
+    // Each bind: use program, set uniforms, fs_draw, then swap
+    gl.useProgram(advectionProgram);
+    gl.uniform2f();
+    fs_draw(velocity_texture);
+
 }
+
+function fs_draw(target, clear = false) {
+    gl.createBuffer();
+    
+    gl.vertexAttribPointer(0, 2, gl.ARRAY_BUFFER, false, 0, 0);
+    gl.enableVertexAttribArray(0);
+    
+    
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+    if (clear) {
+        gl.clearColor(0,0,0,0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+
+    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+}
+
+function fs_render() {
+
+}
+
 
 //--------------------------------------------- MISCELLANEOUS ---------------------------------------------
 
@@ -141,6 +191,20 @@ function showError(error) {
     console.log(error);
 }
 
+// Calculate Time between frames
+function calculateDeltaTime() {
+    var now = Date.now();
+    var dt = (now - lastUpdateTime) / 1000;
+    dt = Math.min(dt, 0.016666);
+    lastUpdateTime = now;
+    return dt;
+}
+
+// Resize canvas means you need to re-initialise frame buffers
+function resizeCanvas() {
+
+}
+
 //-------------------------------------------------- MAIN -------------------------------------------------
 
 function glMain() {
@@ -148,7 +212,10 @@ function glMain() {
         glSetup();
     } catch(e) {
         showError(`Uncaught JavaScript Exception: ${e}`);
+        return;
     }
+
+    fs_update();
 }
 
 glMain();
