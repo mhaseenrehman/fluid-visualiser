@@ -13,7 +13,7 @@ uniform sampler2D velocityGrid;
 uniform sampler2D fieldToAdvect;
 
 // Final velocity field - Advected quanitity
-out vec4 velocity;
+out vec4 outVelocity;
 
 // Linearly interpolate between the 4 closest points in the grid
 vec4 fourBilinearInterpolation(sampler2D field, vec2 pos) {

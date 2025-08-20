@@ -8,7 +8,8 @@ varying vec2 coords_bottom;
 varying vec2 coords_left;
 varying vec2 coords_right;
 
+out vec2 texCoord;
 
 void main() {
-
+    
 }
