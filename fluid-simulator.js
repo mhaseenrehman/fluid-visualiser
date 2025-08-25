@@ -31,20 +31,27 @@ function createTexture() {
     const internalFormat = gl.RGBA;
     const border = 0;
     const format = gl.RGBA;
-    const type = gl.FLOAT;
+    const type = gl.UNSIGNED_BYTE;
     const data = null;
     gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, data);
 
     // Set filtering - no need for mips and it's not filtered - CLAMP_TO_EDGE to ensure boundaries of fluid
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    // gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    // gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
     return velocity_texture;
 }
-function createFrameBuffer() {
+function createFrameBuffer(targetTexture, level) {
+    const frameBuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
 
+    const attachmentPoint = gl.COLOR_ATTACHMENT0;
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, targetTexture, level);
 }
 
 // Create shader - Upload the GLSL source and compile it
@@ -118,8 +125,9 @@ let dyeUniforms = {};
 function fs_setup(gl) {
     // Setup Textures, framebuffers, shaders, programs etc.
 
+
     // Advection program setup
-    advectionProgram = createProgram();
+    // advectionProgram = createProgram();
     
     // Diffusion program setup
 
@@ -159,24 +167,13 @@ function fs_step(delta) {
 }
 
 function fs_draw(target, clear = false) {
-    gl.createBuffer();
-    
-    gl.vertexAttribPointer(0, 2, gl.ARRAY_BUFFER, false, 0, 0);
-    gl.enableVertexAttribArray(0);
-    
-    
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-
-    if (clear) {
-        gl.clearColor(0,0,0,0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-    }
-
-    gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
 }
 
-function fs_render() {
-
+function fs_render(program) {
+    var positionAttributeLocation = gl.getAttribLocation(program, "i_position");
+    var texCoordAttributeLocation = gl.getAttribLocation(program, "o_texCoord");
+    
+    var resolutionLocation = gl.getUniformLocation();
 }
 
 
