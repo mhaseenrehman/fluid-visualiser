@@ -85,7 +85,7 @@ function html_setup() {
         ({x: mouseX, y: mouseY} = getMousePos(canvas, e));
 
         //fs_render_frame_buffer(mouseX, mouseY);
-        console.log("rendering")
+        console.log("rendering");
 
         // Calculate distance between original click position and current click position
         let x = firstMouseX - mouseX;
