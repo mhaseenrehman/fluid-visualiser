@@ -164,6 +164,7 @@ class Program {
         return uniforms;
     }
 
+    // Bind the program
     use() {
         gl.useProgram(this.program);
     }
@@ -291,9 +292,9 @@ async function fs_setup() {
     let pressureShaderSource = await (await fetch("./gl_Programs/pressureJacobi.glsl")).text(); // pressure
     let divergenceShaderSource = await (await fetch("./gl_Programs/divergence.glsl")).text();
     let gradientSubtractShaderSource = await (await fetch("./gl_Programs/gradient.glsl")).text();
-    let vorticityShaderSource = await (await fetch("./gl_Programs/forceApplication.glsl")).text(); // curl
-    let vorticityConfinementShaderSource = await (await fetch("./gl_Programs/forceApplication.glsl")).text(); // vorticity
-    let displayShaderSource = await (await fetch("./gl_Programs/forceApplication.glsl")).text();
+    let vorticityShaderSource = await (await fetch("./gl_Programs/vorticity.glsl")).text(); // curl
+    let vorticityConfinementShaderSource = await (await fetch("./gl_Programs/vorticityConfinement.glsl")).text(); // vorticity
+    let displayShaderSource = await (await fetch("./gl_Programs/displayVector.glsl")).text();
 
     // Programs setup
     forceApplicationProgram =       Program(globalVertexShaderSource, forceApplicationShaderSource);
@@ -342,17 +343,44 @@ function fs_iterate(frameTime) {
     // Anti-pattern: DON'T USE gl.canvasWidth or gl.canvasHeight -> need to be updated constantly everytime canvas W or H is changed
     gl.disable(gl.BLEND);
 
-    advect(u);
+    // Vorticity Refinement
+    vorticityProgram.use();
+    gl.uniform2f(vorticityProgram.uniforms.);
+    fs_draw(vorticity_texture.frameBuffer);
 
-    diffuse(u);
+    // Vorticity Confinement
+    vorticityConfinementProgram.use();
+    fs_draw(velocity_texture.writeFrameBuffer);
+    velocity_texture.swap();
 
-    addForces(u); // Now apply the projection operator to the result.
+    // Divergence
+    divergenceProgram.use();
+    fs_draw(divergence_texture.frameBuffer);
 
-    p = computePressure(u);
+    // Copy Pressure
+    pressureCopyProgram.use();
+    fs_draw(pressure_texture.writeFrameBuffer);
+    pressure_texture.swap();
 
-    subtractPressureGradient(u, p);
+    // Jacobi Pressure
+    pressureProgram.use();
+    fs_draw(pressure_texture.writeFrameBuffer);
+    pressure_texture.swap();
 
-    dye(u);
+    // Subtract Gradient from Pressure
+    gradientSubtractionProgram.use();
+    fs_draw(velocity_texture.writeFrameBuffer);
+    velocity_texture.swap();
+
+    // Advect
+    advectionProgram.use();
+    fs_draw(velocity_texture.writeFrameBuffer);
+    velocity_texture.swap();
+
+    // Display to Canvas
+    displayProgram.use();
+    fs_draw(dye_texture.writeFrameBuffer);
+    dye_texture.swap();
 }
 
 // Display code - Draw to the canvas the final result of 

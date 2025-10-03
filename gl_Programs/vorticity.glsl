@@ -4,7 +4,6 @@ precision highp float;
 precision highp sampler2D;
 
 uniform sampler2D velocity;
-
 uniform vec2 gridSize;
 uniform float gridScale;
 
