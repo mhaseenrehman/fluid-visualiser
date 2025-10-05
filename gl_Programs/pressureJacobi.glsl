@@ -4,11 +4,9 @@ precision highp float;
 precision highp sampler2D;
 
 // Ax = b
-uniform sampler2D x;
-uniform sampler2D b;
-
+uniform sampler2D x; // pressure
+uniform sampler2D b; // divergence
 uniform vec2 gridSize;
-
 uniform float alpha;
 uniform float beta;
 
@@ -30,5 +28,5 @@ void main() {
     float bc = texture(b, uv).x;
 
     // Final Velocity
-    gl_FragCoord = vec4((left + right + top + bottom + alpha * bc)/beta, 0.0, 0.0, 1.0);
+    gl_FragCoord = vec4((left + right + top + bottom + (alpha * bc))/beta, 0.0, 0.0, 1.0);
 }

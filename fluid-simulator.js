@@ -48,6 +48,7 @@ let firstPos;
 let forceApplied = false;
 
 //------------------------------------------ FLUID SIMULATION GLOBALS --------------------------------------
+// Globals
 /** @type {WebGL2RenderingContext} gl */
 let gl;
 let lastUpdateTime = Date.now();
@@ -222,9 +223,12 @@ class Texture {
     }
 
     // Use Texture - Standard way to bind texture and use it as active one
+    // We will use this to not only bind and activate a texture but also set it
+    // As a uniform inside the fs_iterate() function
     useTexture(textureID, texture) {
         gl.activeTexture(gl.TEXTURE0+textureID);
         gl.bindTexture(gl.TEXTURE_2D, texture);
+        return textureID;
     }
 
     // Important for post-processing and RTT - Ping pong technique (Can't
@@ -240,13 +244,19 @@ class Texture {
         if (double) {
             this.readTexture = this.createTexture(width, height, internalFormat, format, type);
             this.readFrameBuffer = this.createFrameBuffer();
-
             this.writeTexture = this.createTexture(width, height, internalFormat, format, type);
             this.writeFrameBuffer = this.createFrameBuffer();
         } else {
             this.texture = this.createTexture(width, height, internalFormat, format, type);
             this.frameBuffer = this.createFrameBuffer();
         }
+
+        this.gridSize = {
+            w: width,
+            h: height
+        };
+
+        this.gridScale = 1.0;
     }
 }
 
@@ -335,9 +345,6 @@ function fs_update() {
     requestAnimationFrame(fs_update);
 }
 
-/** #########################################################*/
-/** #################### DOING THIS ONE #####################*/
-/** #########################################################*/
 // fs_step - Goes through a single iteration of the fluid simulation program
 function fs_iterate(frameTime) {
     // Anti-pattern: DON'T USE gl.canvasWidth or gl.canvasHeight -> need to be updated constantly everytime canvas W or H is changed
@@ -345,35 +352,64 @@ function fs_iterate(frameTime) {
 
     // Vorticity Refinement
     vorticityProgram.use();
-    gl.uniform2f(vorticityProgram.uniforms.);
+    gl.uniform2f(vorticityProgram.uniforms.gridSize, velocity_texture.gridSize.w, velocity_texture.gridSize.h);
+    gl.uniform1f(vorticityProgram.uniforms.gridScale, velocity_texture.gridScale);
+    gl.uniform1i(vorticityProgram.uniforms.velocity, velocity_texture.useTexture(0, velocity_texture.readTexture));
     fs_draw(vorticity_texture.frameBuffer);
 
     // Vorticity Confinement
     vorticityConfinementProgram.use();
+    gl.uniform2f(vorticityConfinementProgram.uniforms.gridSize, velocity_texture.gridSize.w, velocity_texture.gridSize.h);
+    gl.uniform1f(vorticityConfinementProgram.uniforms.gridScale, velocity_texture.gridScale);
+    gl.uniform1i(vorticityConfinementProgram.uniforms.velocity, velocity_texture.useTexture(0, velocity_texture.readTexture));
+    gl.uniform1i(vorticityConfinementProgram.uniforms.vorticity, vorticity_texture.useTexture(1, vorticity_texture.texture));
+    gl.uniform1f(vorticityConfinementProgram.uniforms.frameTime, frameTime);
+    gl.uniform1f(vorticityConfinementProgram.uniforms.curl, 30);
     fs_draw(velocity_texture.writeFrameBuffer);
     velocity_texture.swap();
 
     // Divergence
     divergenceProgram.use();
+    gl.uniform2f(divergenceProgram.uniforms.gridSize, velocity_texture.gridSize.w, velocity_texture.gridSize.h);
+    gl.uniform1f(divergenceProgram.uniforms.gridScale, velocity_texture.gridScale);
+    gl.uniform1i(divergenceProgram.uniforms.velocity, velocity_texture.useTexture(0, velocity_texture.readTexture));
     fs_draw(divergence_texture.frameBuffer);
 
     // Copy Pressure
     pressureCopyProgram.use();
+    gl.uniform2f(pressureCopyProgram.uniforms.gridSize, velocity_texture.gridSize.w, velocity_texture.gridSize.h);
+    gl.uniform1i(pressureCopyProgram.uniforms.pressure, pressure_texture.useTexture(0, pressure_texture.readTexture));
+    gl.uniform1f(pressureCopyProgram.uniforms.value, 0.8);
     fs_draw(pressure_texture.writeFrameBuffer);
     pressure_texture.swap();
 
     // Jacobi Pressure
     pressureProgram.use();
-    fs_draw(pressure_texture.writeFrameBuffer);
-    pressure_texture.swap();
+    gl.uniform2f(pressureProgram.uniforms.gridSize, velocity_texture.gridSize.w, velocity_texture.gridSize.h);
+    gl.uniform1i(pressureProgram.uniforms.b, pressure_texture.useTexture(0, divergence_texture.useTexture(0, divergence_texture.texture)));
+    gl.uniform1f(pressureProgram.uniforms.alpha, -1);
+    gl.uniform1f(pressureProgram.uniforms.beta, 4);
+    for (let i = 0; i < 20; i++) {
+        gl.uniform1i(pressureProgram.uniforms.x, pressure_texture.useTexture(1, pressure_texture.readTexture));
+        fs_draw(pressure_texture.writeFrameBuffer);
+        pressure_texture.swap();
+    }
 
     // Subtract Gradient from Pressure
     gradientSubtractionProgram.use();
+    gl.uniform2f(gradientSubtractionProgram.uniforms.gridSize, velocity_texture.gridSize.w, velocity_texture.gridSize.h);
+    gl.uniform1f(gradientSubtractionProgram.uniforms.gridScale, velocity_texture.gridScale);
+    gl.uniform1i(gradientSubtractionProgram.uniforms.pressure, pressure_texture.useTexture(0, pressure_texture.readTexture));
+    gl.uniform1i(gradientSubtractionProgram.uniforms.velocity, velocity_texture.useTexture(1, velocity_texture.readTexture));
     fs_draw(velocity_texture.writeFrameBuffer);
     velocity_texture.swap();
 
+    /** #########################################################*/
+    /** #################### DOING THIS ONE #####################*/
+    /** #########################################################*/
     // Advect
     advectionProgram.use();
+    
     fs_draw(velocity_texture.writeFrameBuffer);
     velocity_texture.swap();
 

@@ -29,6 +29,6 @@ void main() {
     vec2 gradient = scale * vec2(pr - pl, pt - pb);
     
     // Subtract Pressure Gradient from Divergent field to obtain Non-Divergence Field
-    vec2 wc = texture(w, uv).xy;
+    vec2 wc = texture(velocity, uv).xy;
     gl_FragColor = vec4(wc - gradient, 0.0, 1.0);
 }

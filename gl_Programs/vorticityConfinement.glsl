@@ -3,19 +3,21 @@
 precision float highp;
 precision sampler2D highp;
 
+in o_texCoord;
+
+// Textures to use
 uniform sampler2D velocity;
 uniform sampler2D vorticity;
 
+// Texel Creation - Scaled texture coordinates
 uniform vec2 gridSize;
 uniform float gridScale;
 
 // Timestep between frames
-uniform float delta;
-
+uniform float frameTime;
 // Epsilon used to denote scale
-uniform float epsilon;
-
-uniform vec2 curl;
+//uniform float epsilon;
+uniform float curl;
 
 void main() {
     // Obtain scaled texture coordinate
@@ -32,15 +34,17 @@ void main() {
     float vt = texture(vorticity, uv + yOffset).x;
     
     // Obtain vorticity at centre of current frag pass
-    float vc = texture(vorticity, ux).x;
+    float vc = texture(vorticity, uv).x;
 
     // Vorticity Confirement - Reobtain Rotational forces from dissipation
     float scale = 0.5 / gridScale;
     vec2 force = scale * vec2(abs(vt) - abs(vb), abs(vr) - abs(vl));
-    float lengthSquared = max(epsilon, dot(force, force));
-    force *= inversesqrt(lengthSquared) * curl * vc;
+    //float lengthSquared = max(epsilon, dot(force, force)); - == length(f)
+    //force *= inversesqrt(length(force)) * curl * vc;
+    force /= length(force) + 0.0001;
+    force *= curl*vc;
     force.y *= -1.0;
 
     vec2 vel = texture(velocity, uv).xy;
-    gl_FragColor = vec4(vel + (delta*force), 0.0, 1.0);
+    gl_FragColor = vec4(vel + (frameTime*force), 0.0, 1.0);
 }

@@ -4,6 +4,7 @@ precision mediump float;
 precision mediump sampler2D;
 
 uniform sampler2D pressure;
+uniform vec2 gridSize;
 uniform float value;
 
 void main() {
