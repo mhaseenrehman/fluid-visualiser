@@ -8,7 +8,7 @@ uniform sampler2D velocityGrid;
 uniform sampler2D advectedGrid;
 
 // Timestep for iteration and dissipation for rate of removal of dye
-uniform float timestep;
+uniform float frameTime;
 uniform float dissipation;
 
 // Grid Size and Scale
@@ -40,7 +40,7 @@ void main() {
     float rdx = 1.0 / gridScale;
 
     // Going back in time to calculate original position
-    vec2 position = gl_FragCoord.xy - timestep * rdx * texture(velocityGrid, coords).xy;
+    vec2 position = gl_FragCoord.xy - frameTime * rdx * texture(velocityGrid, coords).xy;
     
     // Final velocity field - Advected quanitity
     gl_FragCoord = vec4(dissipation * fourBilinearInterpolation(advectedGrid, position), 0.0, 1.0);

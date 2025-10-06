@@ -333,7 +333,8 @@ function fs_update() {
         // TODO: resize the framebuffers to prevent any funny business
     };
 
-    // applyInputs() ? Maybe
+    // Mouse inputs collected
+    fs_applyInputs()
 
     // No pause just yet
     fs_iterate(frameTime);
@@ -343,6 +344,14 @@ function fs_update() {
 
     // Loop function
     requestAnimationFrame(fs_update);
+}
+
+/** #########################################################*/
+/** #################### DOING THIS ONE #####################*/
+/** #########################################################*/
+// Apply mouse inputs to canvas
+function fs_applyInputs() {
+
 }
 
 // fs_step - Goes through a single iteration of the fluid simulation program
@@ -404,22 +413,29 @@ function fs_iterate(frameTime) {
     fs_draw(velocity_texture.writeFrameBuffer);
     velocity_texture.swap();
 
-    /** #########################################################*/
-    /** #################### DOING THIS ONE #####################*/
-    /** #########################################################*/
     // Advect
     advectionProgram.use();
-    
+    gl.uniform2f(advectionProgram.uniforms.gridSize, velocity_texture.gridSize.w, velocity_texture.gridSize.h);
+    gl.uniform1f(advectionProgram.uniforms.gridScale, velocity_texture.gridScale);
+    let vID = velocity_texture.useTexture(0, velocity_texture.readTexture);
+    gl.uniform1i(advectionProgram.uniforms.velocityGrid, vID);
+    gl.uniform1i(advectionProgram.uniforms.advectedGrid, vID);
+    gl.uniform1f(advectionProgram.uniforms.frameTime, frameTime);
+    gl.uniform1f(advectionProgram.uniforms.dissipation, 0.2);
     fs_draw(velocity_texture.writeFrameBuffer);
     velocity_texture.swap();
-
-    // Display to Canvas
-    displayProgram.use();
+    
+    // Place in dye
+    gl.uniform2f(advectionProgram.uniforms.gridSize, dye_texture.gridSize.w, dye_texture.gridSize.h);
+    gl.uniform1f(advectionProgram.uniforms.gridScale, dye_texture.gridScale);
+    gl.uniform1i(advectionProgram.uniforms.velocityGrid, velocity_texture.useTexture(0, velocity_texture.readTexture));
+    gl.uniform1i(advectionProgram.uniforms.advectedGrid, dye_texture.useTexture(1, dye_texture.readTexture));
+    gl.uniform1f(advectionProgram.uniforms.dissipation, 1);
     fs_draw(dye_texture.writeFrameBuffer);
     dye_texture.swap();
 }
 
-// Display code - Draw to the canvas the final result of 
+// Display code - Draw to the canvas the final result of fs_iterate()
 function fs_display() {
     // Draw directly the final result of iteration to canvas
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
